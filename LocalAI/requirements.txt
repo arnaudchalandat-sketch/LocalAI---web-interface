@@ -2,3 +2,4 @@ flask>=3.0
 ollama>=0.4
 markdown>=3.6
 bleach>=6.1
+dotenv
