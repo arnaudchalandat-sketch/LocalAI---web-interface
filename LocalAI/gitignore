@@ -1,12 +1,12 @@
-# Conversations persistées des utilisateurs
+# Saved users conversations
 data/
 
-# Environnement virtuel Python
+# python env
 .venv/
 venv/
 env/
 
-# Cache Python
+# python cache
 __pycache__/
 *.pyc
 *.pyo
@@ -14,11 +14,11 @@ __pycache__/
 # Variables d'environnement / secrets
 .env
 
-# Fichiers système
+# system files
 .DS_Store
 Thumbs.db
 
-# Éditeurs
+# editors
 .vscode/
 .idea/
 *.swp
