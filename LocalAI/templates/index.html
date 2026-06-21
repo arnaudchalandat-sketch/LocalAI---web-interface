@@ -1,0 +1,224 @@
+<!DOCTYPE html>
+<html lang="fr">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Chat</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+
+  <div id="sidebar-overlay"></div>
+
+  <div id="collapsed-rail">
+    <button class="sidebar-btn" id="toggle-sidebar-btn" type="button">=</button>
+  </div>
+
+  <div id="sidebar">
+    <div id="sidebar-top">
+      <button class="sidebar-btn" id="toggle-sidebar-btn-inner" type="button">=</button>
+      <form method="POST" action="/new-chat" style="display:contents">
+        <button class="sidebar-btn" id="new-chat-btn" type="submit">+</button>
+      </form>
+    </div>
+    <!-- <nav id="nav-links">
+      <a href="#">Search chats</a>
+      <a href="#">Projects</a>
+    </nav> -->
+    <div id="recents">
+      <p class="section-title">Recents</p>
+      <ul>
+        {% for c in recents %}
+          <li class="{% if c.id == chat_actuel %}active{% endif %}">
+            <form method="POST" action="/switch-chat" class="recent-form">
+              <input type="hidden" name="chat_id" value="{{ c.id }}">
+              <button type="submit" class="recent-title">{{ c.title }}</button>
+            </form>
+            <form method="POST" action="/delete-chat" class="recent-delete-form">
+              <input type="hidden" name="chat_id" value="{{ c.id }}">
+              <button type="submit" class="recent-delete" title="Supprimer">×</button>
+            </form>
+          </li>
+        {% endfor %}
+      </ul>
+    </div>
+    <div id="sidebar-footer">
+      <div id="user-info">
+        <div id="avatar">A</div>
+        <span>Free</span>
+      </div>
+      <a id="upgrade-btn" href="https://github.com/sponsors/VOTRE-PSEUDO" target="_blank" rel="noopener noreferrer">Donate</a>
+    </div>
+  </div>
+
+  <div id="main">
+
+    <div id="topbar">
+      <button class="sidebar-btn" id="mobile-menu-btn" type="button">=</button>
+      <form method="POST" action="/model" id="model-form">
+        <select name="model" id="model-select" onchange="document.getElementById('model-form').submit()">
+          {% for m in modeles %}
+            <option value="{{ m }}" {% if m == modele_actuel %}selected{% endif %}>{{ m }}</option>
+          {% else %}
+            <option value="">Aucun modèle disponible</option>
+          {% endfor %}
+        </select>
+      </form>
+      <button id="share-btn" type="button" data-repo-url="https://github.com/VOTRE-PSEUDO/VOTRE-REPO">Share</button>
+    </div>
+
+    <div id="messages">
+      {% set ns = namespace(assistant_index=0) %}
+      {% for msg in historique %}
+
+        {% if msg.role == 'user' %}
+          <div class="message-row user">
+            <div class="avatar-circle">A</div>
+            <div class="bubble user">{{ msg.content }}</div>
+          </div>
+
+        {% elif msg.role == 'assistant' %}
+          {% set mi = ns.assistant_index %}
+          {% set ns.assistant_index = ns.assistant_index + 1 %}
+
+          <div class="message-row assistant">
+            <div class="bubble assistant markdown-body">{{ msg.content | safe }}</div>
+            <div class="meta-container">
+              <button class="meta-toggle">···</button>
+              <div class="meta-popup">
+                {% if metriques is defined and mi < metriques|length and metriques[mi] and metriques[mi].total_duration is defined %}
+                  <p>Total duration : {{ metriques[mi].total_duration }}s</p>
+                  <p>Loading : {{ metriques[mi].load_duration }}s</p>
+                  <p>Prompt tokens : {{ metriques[mi].prompt_tokens }}</p>
+                  <p>Response tokens : {{ metriques[mi].response_tokens }}</p>
+                  <p>Response time : {{ metriques[mi].response_time }}s</p>
+                {% else %}
+                  <p>No data</p>
+                {% endif %}
+              </div>
+            </div>
+          </div>
+        {% endif %}
+
+      {% endfor %}
+    </div>
+
+    <div id="input-zone">
+      <form method="POST" action="/" id="message-form">
+        <div id="input-wrapper">
+          <input type="text" name="message" placeholder="Ask anything..." autocomplete="off" maxlength="4000"/>
+          <button type="submit" id="send-btn">Send</button>
+        </div>
+      </form>
+    </div>
+
+  </div>
+
+  <script>
+    const messages = document.getElementById("messages");
+    messages.scrollTop = messages.scrollHeight;
+
+    const lastRow = messages.querySelector(".message-row:last-child");
+    if (lastRow) {
+      lastRow.classList.add("message-new");
+    }
+
+    const messageForm = document.getElementById("message-form");
+    const sendBtn = document.getElementById("send-btn");
+    const messageInput = messageForm.querySelector("input[name='message']");
+    let formSubmitted = false;
+
+    messageInput.addEventListener("keydown", function(e) {
+      if (e.key === "Enter") {
+        e.preventDefault();
+        if (typeof messageForm.requestSubmit === "function") {
+          messageForm.requestSubmit();
+        } else {
+          messageForm.submit();
+        }
+      }
+    });
+
+    document.querySelectorAll(".meta-toggle").forEach(btn => {
+      btn.addEventListener("click", function() {
+        const popup = this.nextElementSibling;
+        popup.classList.toggle("visible");
+      });
+    });
+
+    messageForm.addEventListener("submit", function(e) {
+      if (formSubmitted || !messageInput.value.trim()) {
+        e.preventDefault();
+        return;
+      }
+      formSubmitted = true;
+      sendBtn.disabled = true;
+      sendBtn.innerHTML = '<span class="spinner"></span>';
+    });
+
+    const sidebar = document.getElementById("sidebar");
+    const rail = document.getElementById("collapsed-rail");
+    const overlay = document.getElementById("sidebar-overlay");
+
+    const isMobile = () => window.matchMedia("(max-width: 768px)").matches;
+
+    function openSidebar() {
+      sidebar.classList.remove("collapsed");
+      if (isMobile()) {
+        overlay.classList.add("visible");
+      } else {
+        rail.classList.remove("visible");
+      }
+    }
+
+    function closeSidebar() {
+      sidebar.classList.add("collapsed");
+      overlay.classList.remove("visible");
+      if (!isMobile()) {
+        rail.classList.add("visible");
+      }
+    }
+
+    function toggleSidebar() {
+      if (sidebar.classList.contains("collapsed")) {
+        openSidebar();
+      } else {
+        closeSidebar();
+      }
+    }
+
+    // Sur mobile, la sidebar demarre fermee (sinon elle couvrirait tout
+    // l'ecran au premier chargement). Sur desktop, elle demarre ouverte.
+    if (isMobile()) {
+      closeSidebar();
+    }
+
+    document.getElementById("toggle-sidebar-btn").addEventListener("click", toggleSidebar);
+    document.getElementById("toggle-sidebar-btn-inner").addEventListener("click", toggleSidebar);
+    document.getElementById("mobile-menu-btn").addEventListener("click", toggleSidebar);
+    overlay.addEventListener("click", closeSidebar);
+
+    // Si l'utilisateur navigue (change de chat, en cree un nouveau) depuis
+    // mobile, la sidebar se referme automatiquement apres l'action.
+    if (isMobile()) {
+      document.querySelectorAll(".recent-form, #new-chat-btn").forEach(function(el) {
+        el.addEventListener("submit", closeSidebar);
+        el.addEventListener("click", closeSidebar);
+      });
+    }
+
+    document.getElementById("share-btn").addEventListener("click", function() {
+      const url = this.dataset.repoUrl;
+      const btn = this;
+      navigator.clipboard.writeText(url).then(function() {
+        const original = btn.textContent;
+        btn.textContent = "Copied!";
+        setTimeout(function() {
+          btn.textContent = original;
+        }, 1500);
+      });
+    });
+  </script>
+
+</body>
+</html>

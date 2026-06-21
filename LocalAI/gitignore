@@ -1,0 +1,24 @@
+# Conversations persistées des utilisateurs
+data/
+
+# Environnement virtuel Python
+.venv/
+venv/
+env/
+
+# Cache Python
+__pycache__/
+*.pyc
+*.pyo
+
+# Variables d'environnement / secrets
+.env
+
+# Fichiers système
+.DS_Store
+Thumbs.db
+
+# Éditeurs
+.vscode/
+.idea/
+*.swp
